@@ -1,0 +1,1937 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supreme Saiyan & Disciplina Total</title>
+    <!-- Enlace al Manifiesto PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dragon: {
+                            50: '#fff7ed',
+                            500: '#f97316',
+                            600: '#ea580c',
+                            700: '#c2410c',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Firebase SDKs & Sincronización Híbrida (Online / Offline) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBw9ateDd4YyWgtL5G0j9Vv_gnax4a7yPA",
+            authDomain: "supremesaiyandb.firebaseapp.com",
+            projectId: "supremesaiyandb",
+            storageBucket: "supremesaiyandb.firebasestorage.app",
+            messagingSenderId: "329468675747",
+            appId: "1:329468675747:web:285e7cfe57e5b3b15b6116",
+            measurementId: "G-L1BG843V86"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.guardarEnNubeFirebase = async function(data) {
+            if (!navigator.onLine) {
+                console.log("📴 Sin conexión a internet. Datos guardados en caché local (Modo Offline).");
+                return;
+            }
+            try {
+                await setDoc(doc(db, "usuarios", "saiyan_principal"), data);
+                console.log("🔥 Datos sincronizados en Firebase Firestore con éxito.");
+            } catch (e) {
+                console.error("Error al sincronizar con la nube:", e);
+            }
+        };
+
+        window.cargarDeNubeFirebase = async function() {
+            if (!navigator.onLine) {
+                console.log("📴 Sin conexión. Cargando datos desde almacenamiento local.");
+                return null;
+            }
+            try {
+                const docRef = doc(db, "usuarios", "saiyan_principal");
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    return docSnap.data();
+                }
+            } catch (e) {
+                console.log("Fallo de red, recurriendo a modo offline.");
+            }
+            return null;
+        };
+    </script>
+</head>
+<body id="appBody" class="bg-slate-900 text-slate-100 min-h-screen font-sans antialiased flex flex-col justify-between transition-colors duration-300 relative">
+
+    <!-- Notificaciones Flotantes -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <!-- Header -->
+    <header id="appHeader" class="bg-slate-800 border-b border-slate-700 p-4 shadow-md sticky top-0 z-40 transition-colors duration-300">
+        <div class="max-w-5xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex items-center space-x-3">
+                <div id="headerIconBox" class="bg-gradient-to-tr from-orange-500 to-amber-400 p-2.5 rounded-xl text-slate-950 font-black shadow-lg shadow-orange-500/20 transition-all duration-300">
+                    <i class="fa-solid fa-bolt text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight tracking-wide">SUPREME SAIYAN</h1>
+                    <p id="headerSubtitle" class="text-xs text-orange-400 font-semibold tracking-wider uppercase transition-colors duration-300">Sistema Estricto de Disciplina</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3 flex-wrap justify-center">
+                <!-- Indicador de Red Híbrida -->
+                <div id="networkStatusBadge" class="text-[10px] bg-emerald-500/20 border border-emerald-500/50 px-2.5 py-1 rounded-lg text-emerald-400 font-bold flex items-center space-x-1" title="Estado de Red">
+                    <i id="networkIcon" class="fa-solid fa-wifi"></i>
+                    <span id="networkText">Online</span>
+                </div>
+                <button onclick="requestNotificationPermission()" class="text-xs bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-cyan-400 font-bold transition hover:bg-slate-700 flex items-center space-x-1.5" title="Activar Alarma">
+                    <i class="fa-solid fa-bell"></i> <span class="hidden sm:inline">Activar Alarma</span>
+                </button>
+                <button onclick="toggleTheme()" id="themeBtn" class="text-xs bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-amber-400 font-bold transition hover:bg-slate-700">
+                    <i class="fa-solid fa-moon"></i> <span id="themeLabel">Modo Saiyajin</span>
+                </button>
+                <div class="flex items-center space-x-1.5 text-xs bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700 text-amber-400 font-bold">
+                    <i class="fa-solid fa-fire text-orange-500"></i>
+                    <span id="streakDisplay">Racha: 0 días</span>
+                </div>
+                <div class="flex items-center space-x-1.5 text-xs bg-slate-900 px-3 py-1.5 rounded-lg border border-emerald-500/50 text-emerald-400 font-bold">
+                    <i class="fa-solid fa-pills"></i>
+                    <span id="senzuDisplay">Senzu: 0</span>
+                </div>
+                <div id="clockDisplay" class="text-xs bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700 text-orange-400 font-mono">
+                    --:--:--
+                </div>
+                <button onclick="testAlarmSound()" title="Probar Alarma" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-2 rounded-xl text-xs font-medium transition">
+                    <i class="fa-solid fa-volume-high"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-5xl w-full mx-auto p-4 md:p-6 space-y-6 flex-grow">
+
+        <!-- Frase Dinámica por Rango / Nivel -->
+        <section id="quotePanel" class="bg-gradient-to-r from-orange-600/20 via-slate-800 to-slate-900 border border-orange-500/30 rounded-2xl p-4 shadow-lg flex items-center justify-between transition-colors duration-300">
+            <div class="flex items-center space-x-4 flex-grow">
+                <div id="quoteIcon" class="text-orange-400 text-2xl pl-2">
+                    <i class="fa-solid fa-quote-left"></i>
+                </div>
+                <div>
+                    <p id="quoteText" class="text-sm italic text-slate-200 font-medium">"El poder viene en respuesta a una necesidad, no a un deseo."</p>
+                    <span id="quoteAuthor" class="text-[10px] uppercase font-bold text-orange-400 tracking-wider">— Goku</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- LÍNEA DE TIEMPO VISUAL DEL DÍA (CRONOGRAMA EN VIVO) -->
+        <section class="bg-slate-800 border border-slate-700/80 rounded-2xl p-5 shadow-lg space-y-3">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-base flex items-center space-x-2 text-slate-200">
+                    <i class="fa-solid fa-timeline text-orange-500"></i>
+                    <span>Cronograma de Actividades del Día (En Vivo)</span>
+                </h3>
+                <span id="currentTimelineStatus" class="text-xs font-mono font-bold text-orange-400 bg-slate-900 px-2.5 py-1 rounded-xl border border-slate-700">Bloque: Detectando...</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-1 text-center text-xs">
+                <div id="timelineBlock1" class="bg-slate-900 border border-slate-700 p-2.5 rounded-xl transition">
+                    <span class="text-[10px] text-slate-400 block">Mañana</span>
+                    <strong class="text-slate-200">Universidad / Clases</strong>
+                </div>
+                <div id="timelineBlock2" class="bg-slate-900 border border-slate-700 p-2.5 rounded-xl transition">
+                    <span class="text-[10px] text-slate-400 block">Mediodía</span>
+                    <strong class="text-slate-200">Servicio Social (Poder Judicial)</strong>
+                </div>
+                <div id="timelineBlock3" class="bg-slate-900 border border-slate-700 p-2.5 rounded-xl transition">
+                    <span class="text-[10px] text-slate-400 block">Tarde</span>
+                    <strong class="text-slate-200">Práctica / Deporte / Código</strong>
+                </div>
+                <div id="timelineBlock4" class="bg-slate-900 border border-slate-700 p-2.5 rounded-xl transition">
+                    <span class="text-[10px] text-slate-400 block">Noche</span>
+                    <strong class="text-slate-200">Descanso & Cierre (Protocolo)</strong>
+                </div>
+            </div>
+        </section>
+
+        <!-- Panel de Rango / Fase -->
+        <section id="stagePanel" class="bg-gradient-to-r from-slate-800 via-slate-800 to-slate-900 border border-slate-700/80 rounded-2xl p-5 shadow-xl relative overflow-hidden transition-colors duration-300">
+            <div class="absolute -right-6 -bottom-6 opacity-10 text-9xl text-orange-500 pointer-events-none">
+                <i class="fa-solid fa-fire"></i>
+            </div>
+            
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
+                <div class="space-y-1">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs uppercase tracking-widest text-slate-400 font-bold bg-slate-900 px-2.5 py-1 rounded-md border border-slate-700">Fase Actual</span>
+                        <select id="userTitleSelect" onchange="changeUserTitle()" class="bg-slate-900 text-orange-400 text-xs font-bold border border-slate-700 px-2 py-1 rounded-md focus:outline-none">
+                            <option value="Guerrero en Pruebas">Título: Guerrero en Pruebas</option>
+                        </select>
+                    </div>
+                    <h2 id="currentStageTitle" class="text-2xl md:text-3xl font-black text-orange-400 tracking-wide mt-1">Humano Común</h2>
+                    <p id="currentStageDesc" class="text-sm text-slate-300 max-w-xl">Estás dando tus primeros pasos en el camino de la disciplina.</p>
+                </div>
+                <div class="bg-slate-900/90 border border-slate-700 px-5 py-3 rounded-xl text-right min-w-[140px] shadow-inner">
+                    <span class="text-xs text-slate-400 block">Puntos de Poder (EXP)</span>
+                    <span id="userExp" class="text-2xl font-black text-amber-400 font-mono">0</span>
+                </div>
+            </div>
+
+            <div class="mt-5 space-y-2 relative z-10">
+                <div class="flex justify-between text-xs font-semibold text-slate-400">
+                    <span id="progressTextMin">Fase 0</span>
+                    <span id="progressTextNext">Siguiente: Ozarú (100 EXP)</span>
+                </div>
+                <div class="w-full bg-slate-900 h-3.5 rounded-full overflow-hidden p-0.5 border border-slate-700">
+                    <div id="expProgressBar" class="bg-gradient-to-r from-orange-500 to-amber-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Grid Principal -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <!-- Izquierda: Formulario, Protocolo Sueño, Protocolo Facial, Hidratación, Finanzas, Cuenta Regresiva, Senzu y Pomodoro -->
+            <div class="space-y-6">
+                <!-- Formulario -->
+                <div id="formPanel" class="bg-slate-800 border border-slate-700/80 rounded-2xl p-5 shadow-lg space-y-4 transition-colors duration-300">
+                    <h3 class="font-bold text-base flex items-center space-x-2 text-slate-200">
+                        <i class="fa-solid fa-plus-circle text-orange-500"></i>
+                        <span>Nueva Misión o Alarma Estricta</span>
+                    </h3>
+
+                    <form id="taskForm" onsubmit="handleAddTask(event)" class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Nombre de la Actividad / Examen</label>
+                            <input type="text" id="taskTitle" required placeholder="Ej. Tarea de Sistemas Embebidos" 
+                                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-orange-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Categoría Oficial (EXP Estricto)</label>
+                            <select id="taskCategory" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-orange-500">
+                                <option value="workout">💪 Ejercicio / Fuerza (+100 EXP)</option>
+                                <option value="study" selected>📚 Estudio / Programación (+80 EXP)</option>
+                                <option value="exam">📝 Examen / Evaluación Mayor (+150 EXP)</option>
+                                <option value="spiritual">🧘 Hábito Espiritual / Mental (+50 EXP)</option>
+                                <option value="cleaning">🧹 Limpieza / Orden (+40 EXP)</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Fecha Límite</label>
+                                <input type="date" id="taskDate" required 
+                                    class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2 py-2 text-xs text-slate-100 focus:outline-none focus:border-orange-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Hora / Alarma</label>
+                                <input type="time" id="taskTime" required 
+                                    class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2 py-2 text-xs text-slate-100 focus:outline-none focus:border-orange-500">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Notas u Objetivo Opcional</label>
+                            <textarea id="taskNotes" placeholder="Detalles..." rows="2"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-orange-500"></textarea>
+                        </div>
+
+                        <button type="submit" class="w-full bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 font-bold py-2.5 px-4 rounded-xl text-sm transition shadow-lg hover:brightness-110 flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-calendar-plus"></i>
+                            <span>Programar en la Agenda</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Protocolo de Sueño Evaluado -->
+                <div class="bg-slate-800 border border-indigo-500/40 rounded-2xl p-5 shadow-lg space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-base flex items-center space-x-2 text-indigo-400">
+                            <i class="fa-solid fa-moon"></i>
+                            <span>Calificación de Sueño</span>
+                        </h3>
+                        <button onclick="resetSleepProtocol()" class="text-[10px] text-slate-400 hover:text-indigo-400 bg-slate-900 px-2 py-1 rounded border border-slate-700">Limpiar</button>
+                    </div>
+                    <p class="text-xs text-slate-400">Registra tus horas de descanso y evalúa tu recuperación.</p>
+                    <form onsubmit="handleEvaluateSleep(event)" class="space-y-2">
+                        <input type="number" step="0.5" id="sleepHoursInput" required placeholder="Horas dormidas (Ej. 7.5)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none font-mono">
+                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-slate-100 font-bold py-2 rounded-xl text-xs transition">Evaluar Calidad de Sueño</button>
+                    </form>
+                    <div id="sleepEvaluationResult" class="bg-slate-900 p-3 rounded-xl border border-slate-700 text-xs text-slate-300 space-y-1">
+                        <span class="text-slate-500 italic">Sin registro de sueño hoy.</span>
+                    </div>
+                </div>
+
+                <!-- Protocolo Facial -->
+                <div class="bg-slate-800 border border-amber-500/30 rounded-2xl p-5 shadow-lg space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-base flex items-center space-x-2 text-amber-400">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            <span>Protocolo Facial & Cuidado</span>
+                        </h3>
+                        <button onclick="resetSkinProtocol()" class="text-[10px] text-slate-400 hover:text-amber-400 bg-slate-900 px-2 py-1 rounded border border-slate-700">Reiniciar</button>
+                    </div>
+                    <p class="text-xs text-slate-400">Jabones especiales y aplicación de parches (+30 EXP).</p>
+                    <div class="space-y-2 pt-1">
+                        <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer bg-slate-900 p-2 rounded-xl border border-slate-700">
+                            <input type="checkbox" id="protocolSoap" onchange="checkSkinProtocol()" class="rounded bg-slate-800 border-slate-600 text-orange-500 focus:ring-0">
+                            <span>🧼 Lavado facial con jabón especial</span>
+                        </label>
+                        <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer bg-slate-900 p-2 rounded-xl border border-slate-700">
+                            <input type="checkbox" id="protocolPatches" onchange="checkSkinProtocol()" class="rounded bg-slate-800 border-slate-600 text-orange-500 focus:ring-0">
+                            <span>🩹 Aplicación de parches / Cuidado de piel</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Cuenta Regresiva -->
+                <div class="bg-slate-800 border border-orange-500/40 rounded-2xl p-5 shadow-lg space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-base flex items-center space-x-2 text-orange-400">
+                            <i class="fa-solid fa-hourglass-start"></i>
+                            <span>Alerta de Examen / Proyecto</span>
+                        </h3>
+                        <button onclick="clearCountdown()" class="text-[10px] text-red-400 hover:text-red-300 bg-slate-900 px-2 py-1 rounded border border-slate-700">Borrar</button>
+                    </div>
+                    <form onsubmit="handleSetCountdown(event)" class="space-y-2">
+                        <input type="text" id="countdownTitle" required placeholder="Nombre (Ej. Entrega Final Web)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none">
+                        <input type="datetime-local" id="countdownDate" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2 py-1.5 text-xs text-slate-100 focus:outline-none">
+                        <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-slate-950 font-bold py-2 rounded-xl text-xs transition">Activar Alerta</button>
+                    </form>
+                    <div id="countdownDisplay" class="bg-slate-900 p-3 rounded-xl border border-slate-700 text-center font-mono text-xs text-amber-400 font-bold">
+                        No hay cuenta regresiva activa.
+                    </div>
+                </div>
+
+                <!-- Hidratación -->
+                <div class="bg-slate-800 border border-cyan-500/30 rounded-2xl p-5 shadow-lg space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-base flex items-center space-x-2 text-cyan-400">
+                            <i class="fa-solid fa-droplet"></i>
+                            <span>Hidratación de Guerrero</span>
+                        </h3>
+                        <button onclick="resetWaterGlasses()" class="text-[10px] text-slate-400 hover:text-cyan-400 bg-slate-900 px-2 py-1 rounded border border-slate-700">Reiniciar</button>
+                    </div>
+                    <p class="text-xs text-slate-400">Completa tus 4 vasos diarios (+20 EXP).</p>
+                    <div class="flex justify-between items-center py-2">
+                        <button onclick="toggleWaterGlass(0)" id="waterGlass1" class="w-10 h-12 rounded-xl border border-slate-700 bg-slate-900 flex flex-col items-center justify-center text-slate-500 transition"><i class="fa-solid fa-glass-water"></i><span class="text-[9px]">1</span></button>
+                        <button onclick="toggleWaterGlass(1)" id="waterGlass2" class="w-10 h-12 rounded-xl border border-slate-700 bg-slate-900 flex flex-col items-center justify-center text-slate-500 transition"><i class="fa-solid fa-glass-water"></i><span class="text-[9px]">2</span></button>
+                        <button onclick="toggleWaterGlass(2)" id="waterGlass3" class="w-10 h-12 rounded-xl border border-slate-700 bg-slate-900 flex flex-col items-center justify-center text-slate-500 transition"><i class="fa-solid fa-glass-water"></i><span class="text-[9px]">3</span></button>
+                        <button onclick="toggleWaterGlass(3)" id="waterGlass4" class="w-10 h-12 rounded-xl border border-slate-700 bg-slate-900 flex flex-col items-center justify-center text-slate-500 transition"><i class="fa-solid fa-glass-water"></i><span class="text-[9px]">4L</span></button>
+                    </div>
+                </div>
+
+                <!-- Control de Gastos -->
+                <div class="bg-slate-800 border border-emerald-500/30 rounded-2xl p-5 shadow-lg space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-base flex items-center space-x-2 text-emerald-400">
+                            <i class="fa-solid fa-wallet"></i>
+                            <span>Disciplina Financiera</span>
+                        </h3>
+                        <button onclick="clearExpenses()" class="text-[10px] text-red-400 hover:text-red-300 bg-slate-900 px-2 py-1 rounded border border-slate-700">Borrar Gastos</button>
+                    </div>
+                    <form onsubmit="handleAddExpense(event)" class="space-y-2">
+                        <input type="text" id="expenseName" required placeholder="Concepto (Ej. Mercado)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none">
+                        <input type="number" id="expenseAmount" required placeholder="Monto ($)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none">
+                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-2 rounded-xl text-xs transition">Registrar Gasto</button>
+                    </form>
+                    <div id="expenseListContainer" class="space-y-1 max-h-24 overflow-y-auto text-xs text-slate-300"></div>
+                    <div id="expenseSummary" class="text-xs text-slate-300 pt-1 border-t border-slate-700 flex justify-between font-mono">
+                        <span>Total Gastado Hoy:</span>
+                        <span id="totalExpenseAmount" class="text-emerald-400 font-bold">$0.00</span>
+                    </div>
+                </div>
+
+                <!-- Tienda Senzu -->
+                <div class="bg-slate-800 border border-emerald-500/30 rounded-2xl p-5 shadow-lg space-y-3">
+                    <h3 class="font-bold text-base flex items-center space-x-2 text-emerald-400">
+                        <i class="fa-solid fa-pills"></i>
+                        <span>Semillas del Ermitaño (Senzu)</span>
+                    </h3>
+                    <p class="text-xs text-slate-400">Compra Senzu Beans con EXP para proteger tu racha.</p>
+                    <div class="flex items-center justify-between bg-slate-900 px-3 py-2 rounded-xl border border-slate-700 text-xs">
+                        <span class="text-slate-300">En Inventario:</span>
+                        <span id="senzuInventoryCount" class="font-bold text-emerald-400 font-mono text-sm">0 unidades</span>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="buySenzuBean()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-slate-950 text-xs font-bold py-2.5 rounded-xl transition shadow-md">
+                            Comprar (150 EXP)
+                        </button>
+                        <button onclick="useSenzuBean()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-emerald-400 text-xs font-bold py-2.5 rounded-xl transition border border-emerald-500/40">
+                            Usar (+1 Racha)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Pomodoro -->
+                <div id="pomodoroPanel" class="bg-slate-800 border border-slate-700/80 rounded-2xl p-5 shadow-lg space-y-3 transition-colors duration-300">
+                    <h3 class="font-bold text-base flex items-center space-x-2 text-slate-200">
+                        <i class="fa-solid fa-meteor text-orange-500"></i>
+                        <span>Gravedad 100x (Pomodoro)</span>
+                    </h3>
+                    <p class="text-xs text-slate-400">Concentración extrema (+30 EXP).</p>
+                    <div id="pomodoroTimer" class="text-3xl font-black text-center font-mono text-orange-400 py-2 bg-slate-900 rounded-xl border border-slate-700">
+                        25:00
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="startPomodoro()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-xs font-bold py-2 rounded-lg transition">Iniciar</button>
+                        <button onclick="resetPomodoro()" class="flex-1 bg-slate-900 hover:bg-slate-800 text-xs font-bold py-2 rounded-lg text-slate-400 transition">Reiniciar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Derecha: Horario, Doctrina Ultra Instinto, Doctrina Visual, Rutinas y Agenda -->
+            <div class="md:col-span-2 space-y-6">
+
+                <!-- ENTRENAMIENTO MENTAL ULTRA INSTINTO -->
+                <div class="bg-gradient-to-r from-slate-800 via-slate-800 to-slate-900 border-2 border-cyan-500/50 rounded-3xl p-5 shadow-2xl space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                        <h3 class="font-black text-base text-cyan-400 flex items-center space-x-2">
+                            <i class="fa-solid fa-brain"></i>
+                            <span>Entrenamiento Mental: Reflejos Ultra Instinto</span>
+                        </h3>
+                        <span id="uiScore" class="text-xs font-mono font-bold text-amber-400 bg-slate-900 px-3 py-1 rounded-xl border border-slate-700">Aciertos: 0 / 5</span>
+                    </div>
+                    <p class="text-xs text-slate-300">Activa tu mente antes de estudiar. Toca el objetivo luminoso tan rápido como aparezca para entrenar tu velocidad de reacción mental sin dudar. ¡Gana +50 EXP al completar una ronda perfecta!</p>
+                    
+                    <div class="flex justify-center">
+                        <button id="uiStartBtn" onclick="startUltraInstinctGame()" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black px-6 py-2.5 rounded-xl text-xs transition shadow-lg">
+                            Iniciar Prueba de Reflejos
+                        </button>
+                    </div>
+                    
+                    <div id="uiGameArea" class="h-36 bg-slate-900 rounded-2xl border border-slate-700 relative flex items-center justify-center overflow-hidden hidden">
+                        <div id="uiTarget" onclick="hitUiTarget()" class="w-12 h-12 bg-gradient-to-tr from-cyan-500 to-amber-400 rounded-full cursor-pointer absolute shadow-lg shadow-cyan-500/50 flex items-center justify-center text-slate-950 font-black hidden">
+                            <i class="fa-solid fa-bolt"></i>
+                        </div>
+                        <span id="uiInstruction" class="text-xs text-slate-400 font-mono">¡Prepárate...</span>
+                    </div>
+                </div>
+
+                <!-- DOCTRINA & INSPIRACIÓN DIARIA -->
+                <div class="bg-slate-800 border border-amber-500/40 rounded-3xl p-5 shadow-xl space-y-4">
+                    <h3 class="font-black text-base text-amber-400 flex items-center space-x-2">
+                        <i class="fa-solid fa-fire-flame-curved"></i>
+                        <span>Doctrina & Inspiración Diaria (Pilares Supreme)</span>
+                    </h3>
+                    <p class="text-xs text-slate-300">Tus principios visuales de disciplina: mañanas imbatibles, mente afilada, físico estricto y finanzas de guerrero.</p>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Tarjeta 1: Mañanas -->
+                        <div class="bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden p-3.5 space-y-2 group hover:border-orange-500 transition">
+                            <div class="h-36 rounded-xl overflow-hidden relative">
+                                <img src="https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=600&q=80" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                                <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-2.5">
+                                    <span class="text-xs font-black text-orange-400 uppercase tracking-wider">Arregla Tus Mañanas</span>
+                                </div>
+                            </div>
+                            <ul class="text-[11px] text-slate-300 space-y-1 list-disc list-inside">
+                                <li>Despiértate a la misma hora exacta</li>
+                                <li>No pospongas jamás la alarma</li>
+                                <li>Bebe agua inmediatamente al despertar</li>
+                            </ul>
+                        </div>
+
+                        <!-- Tarjeta 2: Mente -->
+                        <div class="bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden p-3.5 space-y-2 group hover:border-orange-500 transition">
+                            <div class="h-36 rounded-xl overflow-hidden relative">
+                                <img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                                <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-2.5">
+                                    <span class="text-xs font-black text-orange-400 uppercase tracking-wider">Activa Tu Mente</span>
+                                </div>
+                            </div>
+                            <ul class="text-[11px] text-slate-300 space-y-1 list-disc list-inside">
+                                <li>Lee 10 páginas diariamente</li>
+                                <li>Reduce drásticamente las redes sociales</li>
+                                <li>Aprende habilidades de alto valor (Dev, Wokwi, Spring)</li>
+                            </ul>
+                        </div>
+
+                        <!-- Tarjeta 3: Cuerpo -->
+                        <div class="bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden p-3.5 space-y-2 group hover:border-orange-500 transition">
+                            <div class="h-36 rounded-xl overflow-hidden relative">
+                                <img src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=600&q=80" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                                <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-2.5">
+                                    <span class="text-xs font-black text-orange-400 uppercase tracking-wider">Controla Tu Cuerpo</span>
+                                </div>
+                            </div>
+                            <ul class="text-[11px] text-slate-300 space-y-1 list-disc list-inside">
+                                <li>Entrena con hipertrofia 4-5x por semana</li>
+                                <li>Come limpio el 80% del tiempo</li>
+                                <li>Duerme de 7 a 8 horas sagradas</li>
+                            </ul>
+                        </div>
+
+                        <!-- Tarjeta 4: Finanzas -->
+                        <div class="bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden p-3.5 space-y-2 group hover:border-orange-500 transition">
+                            <div class="h-36 rounded-xl overflow-hidden relative">
+                                <img src="https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=600&q=80" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                                <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-2.5">
+                                    <span class="text-xs font-black text-orange-400 uppercase tracking-wider">Disciplina Financiera</span>
+                                </div>
+                            </div>
+                            <ul class="text-[11px] text-slate-300 space-y-1 list-disc list-inside">
+                                <li>Registra cada uno de tus gastos</li>
+                                <li>Ahorra e invierte primero antes de gastar</li>
+                                <li>Elimina por completo las compras por impulso</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- HORARIO EN FORMATO DE TABLA LIMPIA Y ORDENADA -->
+                <div class="bg-slate-800 border-2 border-orange-500/50 rounded-3xl p-5 shadow-2xl space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-700 pb-3">
+                        <h3 class="font-black text-base text-orange-400 flex items-center space-x-2">
+                            <i class="fa-solid fa-table-cells"></i>
+                            <span>TABLA DE HORARIO SEMANAL</span>
+                        </h3>
+                        <button onclick="clearScheduleMatrix()" class="bg-slate-900 hover:bg-red-500/20 text-red-400 px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-700 transition">
+                            <i class="fa-solid fa-trash"></i> Limpiar Matriz
+                        </button>
+                    </div>
+
+                    <!-- Formulario Manual Preciso -->
+                    <form id="scheduleForm" onsubmit="handleAddSchedule(event)" class="bg-slate-900 p-3.5 rounded-2xl border border-slate-700 grid grid-cols-1 sm:grid-cols-5 gap-2 items-center">
+                        <select id="schDay" class="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-orange-400 font-bold focus:outline-none">
+                            <option value="LUNES">Lunes</option>
+                            <option value="MARTES">Martes</option>
+                            <option value="MIÉRCOLES">Miércoles</option>
+                            <option value="JUEVES">Jueves</option>
+                            <option value="VIERNES">Viernes</option>
+                        </select>
+                        <input type="time" id="schTimeStart" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-2 py-2 text-[11px] text-slate-100 font-mono focus:outline-none" title="Hora de Inicio">
+                        <input type="time" id="schTimeEnd" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-2 py-2 text-[11px] text-slate-100 font-mono focus:outline-none" title="Hora de Fin">
+                        <input type="text" id="schActivity" required placeholder="Nombre de la Materia" class="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none sm:col-span-2">
+                        <button type="submit" class="sm:col-span-5 bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 font-black text-xs py-2.5 rounded-xl transition shadow-md hover:brightness-110">
+                            + Incrustar Bloque en la Matriz
+                        </button>
+                    </form>
+
+                    <!-- Matriz de Horario Ordenada -->
+                    <div class="overflow-x-auto rounded-2xl border border-slate-700 bg-slate-900">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="bg-slate-800 text-orange-400 uppercase font-mono tracking-wider border-b border-slate-700 text-center">
+                                    <th class="p-3 border-r border-slate-700 w-32">Horas</th>
+                                    <th class="p-3 border-r border-slate-700">Lunes</th>
+                                    <th class="p-3 border-r border-slate-700">Martes</th>
+                                    <th class="p-3 border-r border-slate-700">Miércoles</th>
+                                    <th class="p-3 border-r border-slate-700">Jueves</th>
+                                    <th class="p-3">Viernes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scheduleMatrixBody" class="divide-y divide-slate-800 text-slate-300">
+                                <!-- Dinámico -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- PLAN SEMANAL DE EJERCICIOS (ADAPTADO SIN SILLAS) -->
+                <div class="bg-slate-800 border border-orange-500/40 rounded-2xl p-5 shadow-lg space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                        <h3 class="font-bold text-base flex items-center space-x-2 text-orange-400">
+                            <i class="fa-solid fa-fire-flame-curved"></i>
+                            <span>Plan Semanal: Hipertrofia & Estética (Sin Sillas)</span>
+                        </h3>
+                    </div>
+                    <p class="text-xs text-slate-400">Rutinas 100% adaptadas al suelo para cuidar rodillas y espalda. ¡Gana +100 EXP al completar cada día!</p>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <!-- Lunes -->
+                        <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-700 space-y-2 flex flex-col justify-between">
+                            <div>
+                                <span class="text-[10px] bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded font-bold">Lunes</span>
+                                <h4 class="font-bold text-sm text-slate-100 mt-1">Piernas y Cardio</h4>
+                                <ul class="text-[11px] text-slate-300 space-y-1 mt-2 list-disc list-inside">
+                                    <li>Sentadillas libres: 4 series x 12-15 reps</li>
+                                    <li>Zancadas estáticas: 3 series x 12 reps por pierna</li>
+                                    <li>Elevación de pantorrillas: 3 series x 20 reps</li>
+                                    <li>Saltos de tijera: 3 series x 30-40 reps</li>
+                                </ul>
+                            </div>
+                            <button onclick="completarEjercicio('Piernas y Cardio (Lunes)', 100)" class="mt-3 w-full bg-orange-500/20 hover:bg-orange-500 text-orange-400 hover:text-slate-950 font-bold py-2 rounded-xl text-xs transition border border-orange-500/30">
+                                ¡Completar Lunes (+100 EXP)!
+                            </button>
+                        </div>
+
+                        <!-- Martes -->
+                        <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-700 space-y-2 flex flex-col justify-between">
+                            <div>
+                                <span class="text-[10px] bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded font-bold">Martes</span>
+                                <h4 class="font-bold text-sm text-slate-100 mt-1">Pecho y Tríceps (Sin Sillas)</h4>
+                                <ul class="text-[11px] text-slate-300 space-y-1 mt-2 list-disc list-inside">
+                                    <li>Flexiones estándar: 4 series x 8-12 reps</li>
+                                    <li>Fondos en el suelo: 3 series x 10-12 reps</li>
+                                    <li>Flexiones Diamante: 3 series x 6-10 reps</li>
+                                    <li>Planchas: 3 series x 30-40 segundos</li>
+                                </ul>
+                            </div>
+                            <button onclick="completarEjercicio('Pecho y Tríceps (Martes)', 100)" class="mt-3 w-full bg-orange-500/20 hover:bg-orange-500 text-orange-400 hover:text-slate-950 font-bold py-2 rounded-xl text-xs transition border border-orange-500/30">
+                                ¡Completar Martes (+100 EXP)!
+                            </button>
+                        </div>
+
+                        <!-- Miércoles -->
+                        <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-700 space-y-2 flex flex-col justify-between">
+                            <div>
+                                <span class="text-[10px] bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded font-bold">Miércoles</span>
+                                <h4 class="font-bold text-sm text-slate-100 mt-1">Espalda y Bíceps</h4>
+                                <ul class="text-[11px] text-slate-300 space-y-1 mt-2 list-disc list-inside">
+                                    <li>Superman en suelo: 3 series x 12-15 reps</li>
+                                    <li>Remo tumbado en suelo: 3 series x 12 reps</li>
+                                    <li>Curl de bíceps con botellas: 3 series x 12-15 reps</li>
+                                    <li>Planchas laterales: 3 series x 30s por lado</li>
+                                </ul>
+                            </div>
+                            <button onclick="completarEjercicio('Espalda y Bíceps (Miércoles)', 100)" class="mt-3 w-full bg-orange-500/20 hover:bg-orange-500 text-orange-400 hover:text-slate-950 font-bold py-2 rounded-xl text-xs transition border border-orange-500/30">
+                                ¡Completar Miércoles (+100 EXP)!
+                            </button>
+                        </div>
+
+                        <!-- Jueves -->
+                        <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-700 space-y-2 flex flex-col justify-between">
+                            <div>
+                                <span class="text-[10px] bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded font-bold">Jueves</span>
+                                <h4 class="font-bold text-sm text-slate-100 mt-1">Hombros y Abdomen</h4>
+                                <ul class="text-[11px] text-slate-300 space-y-1 mt-2 list-disc list-inside">
+                                    <li>Flexiones en pica: 3 series x 8-10 reps</li>
+                                    <li>Elevaciones laterales con botellas: 3 series x 12 reps</li>
+                                    <li>Crunches abdominales: 3 series x 15-20 reps</li>
+                                    <li>Elevación de piernas: 3 series x 10-12 reps</li>
+                                </ul>
+                            </div>
+                            <button onclick="completarEjercicio('Hombros y Abdomen (Jueves)', 100)" class="mt-3 w-full bg-orange-500/20 hover:bg-orange-500 text-orange-400 hover:text-slate-950 font-bold py-2 rounded-xl text-xs transition border border-orange-500/30">
+                                ¡Completar Jueves (+100 EXP)!
+                            </button>
+                        </div>
+
+                        <!-- Viernes -->
+                        <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-700 space-y-2 flex flex-col justify-between">
+                            <div>
+                                <span class="text-[10px] bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded font-bold">Viernes</span>
+                                <h4 class="font-bold text-sm text-slate-100 mt-1">Full Body y Cardio</h4>
+                                <ul class="text-[11px] text-slate-300 space-y-1 mt-2 list-disc list-inside">
+                                    <li>Burpees: 3 series x 8-10 reps</li>
+                                    <li>Sentadillas con salto: 3 series x 12 reps</li>
+                                    <li>Planchas laterales: 3 series x 30s por lado</li>
+                                </ul>
+                            </div>
+                            <button onclick="completarEjercicio('Full Body (Viernes)', 100)" class="mt-3 w-full bg-orange-500/20 hover:bg-orange-500 text-orange-400 hover:text-slate-950 font-bold py-2 rounded-xl text-xs transition border border-orange-500/30">
+                                ¡Completar Viernes (+100 EXP)!
+                            </button>
+                        </div>
+
+                        <!-- Domingo (Descanso) -->
+                        <div class="bg-slate-900/80 p-3.5 rounded-xl border border-emerald-500/40 space-y-2 flex flex-col justify-between">
+                            <div>
+                                <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-bold">Domingo (Descanso)</span>
+                                <h4 class="font-bold text-sm text-slate-100 mt-1">Recuperación & Movilidad</h4>
+                                <ul class="text-[11px] text-slate-300 space-y-1 mt-2 list-disc list-inside">
+                                    <li>Día de descanso total para el mercado y la escuela</li>
+                                    <li>Estiramientos ligeros y recarga de energía</li>
+                                </ul>
+                            </div>
+                            <button onclick="completarEjercicio('Descanso Dominical', 50)" class="mt-3 w-full bg-emerald-500/20 hover:bg-emerald-500 text-emerald-400 text-slate-950 font-bold py-2 rounded-xl text-xs transition border border-emerald-500/30">
+                                ¡Registrar Descanso (+50 EXP)!
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Agenda -->
+                <div id="tasksPanel" class="bg-slate-800 border border-slate-700/80 rounded-2xl p-5 shadow-lg flex flex-col justify-between min-h-[320px] transition-colors duration-300">
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-base flex items-center space-x-2 text-slate-200">
+                                <i class="fa-solid fa-clock text-orange-500"></i>
+                                <span>Agenda de Tareas & Alarma Programadas</span>
+                            </h3>
+                            <span id="activeTasksCount" class="text-xs bg-slate-900 border border-slate-700 px-2.5 py-1 rounded-full text-slate-400">0 activas</span>
+                        </div>
+
+                        <div id="tasksList" class="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                            <div class="text-center py-12 text-slate-500 text-sm">
+                                <i class="fa-solid fa-bell-slash text-3xl mb-2 block opacity-40"></i>
+                                No hay alarmas ni misiones programadas. ¡Añade una con su fecha!
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-slate-700 text-xs text-slate-400 flex justify-between items-center">
+                        <span>⚠️ Ignorar alarmas resta -20 EXP.</span>
+                        <button onclick="clearAllTasks()" class="text-red-400 hover:text-red-300 transition">Borrar Todo</button>
+                    </div>
+                </div>
+
+                <!-- Panel de Estadísticas -->
+                <div class="bg-slate-800 border border-slate-700/80 rounded-2xl p-5 shadow-lg space-y-3">
+                    <h3 class="font-bold text-base flex items-center space-x-2 text-slate-200">
+                        <i class="fa-solid fa-chart-pie text-orange-500"></i>
+                        <span>Récords y Estadísticas del Guerrero</span>
+                    </h3>
+                    <div class="grid grid-cols-3 gap-3 text-center">
+                        <div class="bg-slate-900 p-3 rounded-xl border border-slate-700">
+                            <span class="text-[10px] text-slate-400 block uppercase">Misiones Cumplidas</span>
+                            <span id="statTotalCompleted" class="text-lg font-black text-amber-400 font-mono">0</span>
+                        </div>
+                        <div class="bg-slate-900 p-3 rounded-xl border border-slate-700">
+                            <span class="text-[10px] text-slate-400 block uppercase">Mejor Día (EXP)</span>
+                            <span id="statBestExp" class="text-lg font-black text-orange-400 font-mono">0</span>
+                        </div>
+                        <div class="bg-slate-900 p-3 rounded-xl border border-slate-700">
+                            <span class="text-[10px] text-slate-400 block uppercase">Evidencias Subidas</span>
+                            <span id="statTotalPhotos" class="text-lg font-black text-cyan-400 font-mono">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tablero Reto 30 Días -->
+                <div class="bg-slate-800 border border-slate-700/80 rounded-2xl p-5 shadow-lg space-y-3">
+                    <h3 class="font-bold text-base flex items-center space-x-2 text-slate-200">
+                        <i class="fa-solid fa-calendar-check text-orange-500"></i>
+                        <span>Tablero Automático: Reto de 30 Días</span>
+                    </h3>
+                    <p class="text-xs text-slate-400">Se marca automáticamente al completar al menos una misión cada día.</p>
+                    <div id="thirtyDaysGrid" class="grid grid-cols-6 sm:grid-cols-10 gap-2 pt-2"></div>
+                </div>
+
+                <!-- Diario del Guerrero -->
+                <div id="journalPanel" class="bg-slate-800 border border-slate-700/80 rounded-2xl p-5 shadow-lg space-y-4 transition-colors duration-300">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-base flex items-center space-x-2 text-slate-200">
+                            <i class="fa-solid fa-book-open text-orange-500"></i>
+                            <span>Diario del Guerrero</span>
+                        </h3>
+                        <button onclick="openJournalHistory()" class="text-xs text-orange-400 hover:underline font-semibold flex items-center space-x-1">
+                            <i class="fa-solid fa-clock-rotate-left"></i> Ver Historial Completo
+                        </button>
+                    </div>
+                    <textarea id="journalInput" placeholder="Escribe aquí tus pensamientos o notas del día..." rows="3"
+                        class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-orange-500"></textarea>
+                    <button onclick="saveJournal()" class="bg-slate-700 hover:bg-slate-600 text-xs font-bold px-4 py-2 rounded-xl transition text-slate-200">
+                        Guardar Reflexión de Hoy
+                    </button>
+                </div>
+
+                <!-- Medallas -->
+                <div id="badgesPanel" class="bg-slate-800 border border-slate-700/80 rounded-2xl p-5 shadow-lg transition-colors duration-300">
+                    <h3 class="font-bold text-base flex items-center space-x-2 text-slate-200 mb-3">
+                        <i class="fa-solid fa-trophy text-amber-400"></i>
+                        <span>Medallas y Títulos de Guerrero (+500 EXP c/u)</span>
+                    </h3>
+                    <div id="badgesContainer" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfica -->
+        <section id="chartPanel" class="bg-slate-800 border border-slate-700/80 rounded-2xl p-5 shadow-lg space-y-4 transition-colors duration-300">
+            <h3 class="font-bold text-base flex items-center space-x-2 text-slate-200">
+                <i class="fa-solid fa-chart-column text-orange-500"></i>
+                <span>Gráfica de Rendimiento y EXP por Día</span>
+            </h3>
+            <div class="w-full h-64 bg-slate-900/50 p-4 rounded-xl border border-slate-700">
+                <canvas id="progressChart"></canvas>
+            </div>
+        </section>
+
+        <!-- Galería -->
+        <section id="galleryPanel" class="bg-slate-800 border border-slate-700/80 rounded-2xl p-5 shadow-lg transition-colors duration-300">
+            <h3 class="font-bold text-base flex items-center space-x-2 text-slate-200 mb-4">
+                <i class="fa-solid fa-images text-orange-500"></i>
+                <span>Historial de Evidencias Fotográficas</span>
+            </h3>
+            <div id="evidenceGallery" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                <div class="col-span-full text-center py-8 text-slate-500 text-sm">
+                    Aún no hay evidencias registradas.
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modales -->
+    <div id="journalHistoryModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[80vh] flex flex-col">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                <h3 class="font-bold text-base text-slate-100 flex items-center space-x-2">
+                    <i class="fa-solid fa-book-bookmark text-orange-500"></i>
+                    <span>Historial del Diario del Guerrero</span>
+                </h3>
+                <button onclick="closeJournalHistory()" class="text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div id="journalHistoryList" class="space-y-3 overflow-y-auto pr-2 flex-grow"></div>
+        </div>
+    </div>
+
+    <!-- Pantalla de Alarma Estilo Bloqueo de Teléfono -->
+    <div id="alarmModal" class="fixed inset-0 bg-[#0f172a] z-50 flex flex-col justify-between items-center p-8 hidden select-none">
+        <div class="flex-grow flex flex-col justify-center items-center space-y-3 text-center">
+            <div id="alarmClockBig" class="text-7xl sm:text-9xl font-light text-slate-100 tracking-tight font-mono">11:07</div>
+            <div id="alarmDateBig" class="text-slate-400 text-lg font-medium">16 oct viernes a.m.</div>
+            <div id="alarmTaskName" class="text-orange-400 font-bold text-xl mt-4 px-4 py-2 bg-slate-800/80 rounded-xl border border-slate-700">Nombre de la Alarma</div>
+        </div>
+
+        <div class="w-full max-w-sm mb-6">
+            <button onclick="penalizeTask()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 py-4 px-6 rounded-2xl shadow-xl flex items-center justify-center space-x-3 border border-slate-700/80 transition">
+                <i class="fa-solid fa-bell-slash text-orange-400 text-lg"></i>
+                <span class="font-semibold text-base">Posponer por 10 minutos (-20 EXP)</span>
+            </button>
+        </div>
+
+        <div class="w-full max-w-md text-center space-y-3 pb-4">
+            <div class="text-slate-500 animate-bounce text-sm">
+                <i class="fa-solid fa-chevron-up"></i>
+            </div>
+            <button onclick="openEvidenceModalFromAlarm()" class="w-full py-4 bg-transparent text-slate-200 font-semibold text-base hover:text-orange-400 transition tracking-wide flex items-center justify-center space-x-2">
+                <span>Deslice hacia arriba para detener (Subir Evidencia)</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="evidenceModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-base text-slate-100 flex items-center space-x-2">
+                    <i class="fa-solid fa-camera-retro text-orange-500"></i>
+                    <span>Subir Evidencia de Cumplimiento</span>
+                </h3>
+                <button onclick="closeEvidenceModal()" class="text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <p class="text-xs text-slate-400">Sube una foto o captura de pantalla que compruebe tu actividad.</p>
+            <div class="space-y-3">
+                <div class="border-2 border-dashed border-slate-700 hover:border-orange-500 rounded-xl p-6 text-center cursor-pointer transition relative group bg-slate-900/50">
+                    <input type="file" id="evidenceFile" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="previewImage(event)">
+                    <div id="uploadPlaceholder" class="space-y-2">
+                        <i class="fa-solid fa-cloud-arrow-up text-3xl text-orange-400"></i>
+                        <p class="text-xs text-slate-300 font-medium">Haz clic aquí para seleccionar tu foto</p>
+                    </div>
+                    <div id="imagePreviewContainer" class="hidden space-y-2">
+                        <img id="imagePreview" class="max-h-40 mx-auto rounded-lg shadow-md border border-slate-700">
+                        <p class="text-xs text-orange-400 font-medium">¡Imagen cargada!</p>
+                    </div>
+                </div>
+                <button onclick="submitEvidence()" class="w-full bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 font-bold py-3 rounded-xl shadow-lg transition flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-check-circle"></i>
+                    <span>Confirmar y Ganar EXP</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-800 border-t border-slate-700 py-4 text-center text-xs text-slate-500 transition-colors duration-300">
+        Supreme Saiyan System &bull; Forjado para la Superación Personal &copy; 2026
+    </footer>
+
+    <!-- Lógica JS Completa y Sincronizada -->
+    <script>
+        const dragonStages = [
+            { name: "Humano Común", minExp: 0, maxExp: 100, desc: "Estás dando tus primeros pasos en el camino de la disciplina.", quote: "El poder viene en respuesta a una necesidad, no a un deseo.", author: "Goku", themeColor: "from-orange-600/20 via-slate-800 to-slate-900" },
+            { name: "Ozarú (Simio Gigante)", minExp: 100, maxExp: 250, desc: "Tu fuerza interior empieza a despertar con instinto salvaje.", quote: "¡No te des por vencido! Los límites sólo existen si tú se los pones a tu mente.", author: "Vegeta", themeColor: "from-amber-600/20 via-slate-800 to-slate-900" },
+            { name: "Super Saiyajin (Fase 1)", minExp: 250, maxExp: 500, desc: "Has roto tus límites con la furia de la constancia.", quote: "La ira es lo que despierta el verdadero poder legendario.", author: "Goku", themeColor: "from-amber-500/30 via-slate-800 to-slate-900" },
+            { name: "Super Saiyajin 2", minExp: 500, maxExp: 1000, desc: "Rayos de energía rodean tu mente; la concentración es total.", quote: "El orgullo no es el principio de algo, sino el final.", author: "Vegeta", themeColor: "from-yellow-600/30 via-slate-800 to-slate-900" },
+            { name: "Super Saiyajin 3", minExp: 1000, maxExp: 2000, desc: "Poder masivo desatado. Pocos soportan este nivel de exigencia.", quote: "Este es el poder que supera al Super Saiyajin ordinario.", author: "Goku", themeColor: "from-orange-500/40 via-slate-800 to-slate-900" },
+            { name: "Super Saiyajin Dios", minExp: 2000, maxExp: 4000, desc: "Un aura divina te envuelve. Has tocado el reino de los dioses.", quote: "El reino de los dioses exige una disciplina más allá de la carne.", author: "Bills", themeColor: "from-red-600/30 via-slate-800 to-slate-900" },
+            { name: "Super Saiyajin Blue", minExp: 4000, maxExp: 7500, desc: "Calidad de Dios combinada con el control absoluto.", quote: "Calma absoluta combinada con el poder divino.", author: "Goku", themeColor: "from-cyan-600/30 via-slate-800 to-slate-900" },
+            { name: "Ultra Instinto (Signo)", minExp: 7500, maxExp: 12000, desc: "Tu cuerpo y mente actúan por instinto puro, sin dudar.", quote: "Cada parte de tu cuerpo debe moverse por sí misma.", author: "Wiss", themeColor: "from-cyan-500/40 via-slate-800 to-slate-900" },
+            { name: "Ultra Instinto Dominado", minExp: 12000, maxExp: 20000, desc: "Poder absoluto y paz mental perfecta. Eres imparable.", quote: "Ya no hay vacilación en tu mente. Eres uno con el flujo del combate.", author: "Goku", themeColor: "from-slate-100/20 via-slate-800 to-slate-900" }
+        ];
+
+        // Detección y Actualización de Red (Online / Offline)
+        window.addEventListener('online', updateNetworkStatus);
+        window.addEventListener('offline', updateNetworkStatus);
+
+        function updateNetworkStatus() {
+            const badge = document.getElementById('networkStatusBadge');
+            const icon = document.getElementById('networkIcon');
+            const text = document.getElementById('networkText');
+
+            if (navigator.onLine) {
+                badge.className = "text-[10px] bg-emerald-500/20 border border-emerald-500/50 px-2.5 py-1 rounded-lg text-emerald-400 font-bold flex items-center space-x-1";
+                icon.className = "fa-solid fa-wifi";
+                text.innerText = "Online";
+            } else {
+                badge.className = "text-[10px] bg-amber-500/20 border border-amber-500/50 px-2.5 py-1 rounded-lg text-amber-400 font-bold flex items-center space-x-1";
+                icon.className = "fa-solid fa-triangle-exclamation";
+                text.innerText = "Offline (Local)";
+            }
+        }
+
+        // Actualizar Línea de Tiempo en Vivo según la hora
+        function updateTimelineVisual() {
+            const now = new Date();
+            const hour = now.getHours();
+
+            const b1 = document.getElementById('timelineBlock1');
+            const b2 = document.getElementById('timelineBlock2');
+            const b3 = document.getElementById('timelineBlock3');
+            const b4 = document.getElementById('timelineBlock4');
+            const statusLabel = document.getElementById('currentTimelineStatus');
+
+            [b1, b2, b3, b4].forEach(b => {
+                b.className = "bg-slate-900 border border-slate-700 p-2.5 rounded-xl transition";
+            });
+
+            if (hour >= 6 && hour < 12) {
+                b1.className = "bg-orange-500/20 border border-orange-500 text-orange-400 p-2.5 rounded-xl transition shadow-md shadow-orange-500/20";
+                statusLabel.innerText = "Bloque: Universidad / Clases";
+            } else if (hour >= 12 && hour < 17) {
+                b2.className = "bg-orange-500/20 border border-orange-500 text-orange-400 p-2.5 rounded-xl transition shadow-md shadow-orange-500/20";
+                statusLabel.innerText = "Bloque: Servicio Social (Poder Judicial)";
+            } else if (hour >= 17 && hour < 21) {
+                b3.className = "bg-orange-500/20 border border-orange-500 text-orange-400 p-2.5 rounded-xl transition shadow-md shadow-orange-500/20";
+                statusLabel.innerText = "Bloque: Práctica / Deporte / Código";
+            } else {
+                b4.className = "bg-indigo-500/20 border border-indigo-500 text-indigo-400 p-2.5 rounded-xl transition shadow-md shadow-indigo-500/20";
+                statusLabel.innerText = "Bloque: Descanso & Cierre (Protocolo)";
+            }
+        }
+
+        setInterval(updateTimelineVisual, 10000);
+
+        // Protocolo de Sueño con Calificación Automática
+        let sleepLog = { hours: 0, rating: "", advice: "" };
+        function handleEvaluateSleep(e) {
+            e.preventDefault();
+            const hours = parseFloat(document.getElementById('sleepHoursInput').value);
+            if (isNaN(hours)) return;
+
+            sleepLog.hours = hours;
+            if (hours >= 7.5) {
+                sleepLog.rating = "🟢 Descanso de Élite (S-Tier)";
+                sleepLog.advice = "Recuperación óptima alcanzada. Tu cerebro está listo para compilar código y rendir al 100%.";
+                userExp += 40;
+            } else if (hours >= 6) {
+                sleepLog.rating = "🟡 Descanso Estándar (A-Tier)";
+                sleepLog.advice = "Suficiente para operar, pero cuida no acumular fatiga semanal.";
+                userExp += 20;
+            } else {
+                sleepLog.rating = "🔴 Alerta de Fatiga (Fatiga Crítica)";
+                sleepLog.advice = "Descanso insuficiente. Duerme más temprano hoy para proteger tu rendimiento físico y mental.";
+            }
+
+            playAlarmSoundLoop();
+            showToast("🌙 Calificación de sueño procesada.");
+            saveAndRender();
+            renderSleepEvaluation();
+        }
+
+        function renderSleepEvaluation() {
+            const container = document.getElementById('sleepEvaluationResult');
+            if (!sleepLog.rating) {
+                container.innerHTML = `<span class="text-slate-500 italic">Sin registro de sueño hoy.</span>`;
+            } else {
+                container.innerHTML = `
+                    <div class="font-bold text-indigo-400">${sleepLog.rating} (${sleepLog.hours} hrs)</div>
+                    <p class="text-slate-300 text-[11px]">${sleepLog.advice}</p>
+                `;
+            }
+        }
+
+        function resetSleepProtocol() {
+            sleepLog = { hours: 0, rating: "", advice: "" };
+            document.getElementById('sleepHoursInput').value = '';
+            renderSleepEvaluation();
+            saveAndRender();
+            showToast("🧹 Registro de sueño limpiado.");
+        }
+
+        // Protocolo Facial / Jabones y Parches
+        let skinProtocol = { soap: false, patches: false };
+        function checkSkinProtocol() {
+            skinProtocol.soap = document.getElementById('protocolSoap').checked;
+            skinProtocol.patches = document.getElementById('protocolPatches').checked;
+
+            if (skinProtocol.soap && skinProtocol.patches) {
+                userExp += 30;
+                playAlarmSoundLoop();
+                showToast("✨ ¡Protocolo facial completado! +30 EXP.");
+            }
+            saveAndRender();
+        }
+
+        function resetSkinProtocol() {
+            skinProtocol = { soap: false, patches: false };
+            document.getElementById('protocolSoap').checked = false;
+            document.getElementById('protocolPatches').checked = false;
+            saveAndRender();
+            showToast("🧹 Protocolo facial reiniciado.");
+        }
+
+        function resetWaterGlasses() {
+            waterGlasses = [false, false, false, false];
+            saveAndRender();
+            renderWaterGlasses();
+            showToast("💧 Hidratación reiniciada.");
+        }
+
+        function clearExpenses() {
+            if (confirm("¿Borrar todos los gastos registrados de hoy?")) {
+                todayExpenses = [];
+                saveAndRender();
+                renderExpenses();
+                showToast("🗑️ Gastos borrados.");
+            }
+        }
+
+        function clearCountdown() {
+            countdownTarget = null;
+            countdownTitleText = "";
+            localStorage.removeItem('saiyan_cdt_target');
+            localStorage.removeItem('saiyan_cdt_title');
+            if (countdownInterval) clearInterval(countdownInterval);
+            document.getElementById('countdownDisplay').innerText = "No hay cuenta regresiva activa.";
+            showToast("🗑️ Cuenta regresiva borrada.");
+        }
+
+        // Lógica de Ultra Instinto
+        let uiScore = 0;
+        function startUltraInstinctGame() {
+            uiScore = 0;
+            document.getElementById('uiScore').innerText = `Aciertos: 0 / 5`;
+            document.getElementById('uiStartBtn').classList.add('hidden');
+            const area = document.getElementById('uiGameArea');
+            area.classList.remove('hidden');
+            nextUiRound();
+        }
+
+        function nextUiRound() {
+            if (uiScore >= 5) {
+                userExp += 50;
+                playAlarmSoundLoop();
+                showToast("⚡ ¡Ultra Instinto Despertado! +50 EXP.");
+                document.getElementById('uiGameArea').classList.add('hidden');
+                document.getElementById('uiStartBtn').classList.remove('hidden');
+                saveAndRender();
+                return;
+            }
+            const target = document.getElementById('uiTarget');
+            const instr = document.getElementById('uiInstruction');
+            instr.innerText = "¡Mantén la atención...";
+            target.classList.add('hidden');
+
+            let randomDelay = Math.random() * 1500 + 800;
+            setTimeout(() => {
+                let maxX = 250;
+                let maxY = 80;
+                let randX = Math.random() * maxX - 125;
+                let randY = Math.random() * maxY - 40;
+                target.style.transform = `translate(${randX}px, ${randY}px)`;
+                target.classList.remove('hidden');
+                instr.innerText = "¡TÓCALO!";
+            }, randomDelay);
+        }
+
+        function hitUiTarget() {
+            uiScore++;
+            document.getElementById('uiScore').innerText = `Aciertos: ${uiScore} / 5`;
+            document.getElementById('uiTarget').classList.add('hidden');
+            nextUiRound();
+        }
+
+        // Cuenta Regresiva
+        let countdownTarget = null;
+        let countdownTitleText = "";
+        let countdownInterval = null;
+
+        function handleSetCountdown(e) {
+            e.preventDefault();
+            countdownTitleText = document.getElementById('countdownTitle').value;
+            countdownTarget = new Date(document.getElementById('countdownDate').value).getTime();
+            startCountdownTimer();
+            showToast("⏳ Alerta de examen/proyecto activada.");
+            saveAndRender();
+        }
+
+        function startCountdownTimer() {
+            if (countdownInterval) clearInterval(countdownInterval);
+            countdownInterval = setInterval(() => {
+                if (!countdownTarget) return;
+                let now = new Date().getTime();
+                let distance = countdownTarget - now;
+                if (distance < 0) {
+                    document.getElementById('countdownDisplay').innerText = `¡Plazo cumplido para: ${countdownTitleText}!`;
+                    clearInterval(countdownInterval);
+                    return;
+                }
+                let days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                document.getElementById('countdownDisplay').innerText = `${countdownTitleText}: ${days}d ${hours}h ${minutes}m restantes`;
+            }, 1000);
+        }
+
+        const categoryExpMap = {
+            workout: { name: "Ejercicio / Fuerza", exp: 100, icon: "fa-dumbbell" },
+            study: { name: "Estudio / Programación", exp: 80, icon: "fa-book" },
+            exam: { name: "Examen / Evaluación", exp: 150, icon: "fa-graduation-cap" },
+            spiritual: { name: "Hábito Espiritual / Mental", exp: 50, icon: "fa-seedling" },
+            cleaning: { name: "Limpieza / Orden", exp: 40, icon: "fa-broom" }
+        };
+
+        let tasks = [];
+        let scheduleItems = [];
+        let evidences = [];
+        let userExp = 0;
+        let userStreak = 0;
+        let senzuBeans = 0;
+        let dailyExpLog = {};
+        let journalLogs = {};
+        let completedDays = [];
+        let unlockedBadges = [];
+        let selectedTitle = "Guerrero en Pruebas";
+        let isLightMode = false;
+        let waterGlasses = [false, false, false, false];
+        let todayExpenses = [];
+
+        let activeTaskIdForEvidence = null;
+        let tempImageBase64 = null;
+        let myChart = null;
+        let alarmRingingInterval = null;
+
+        let pomodoroTime = 25 * 60;
+        let pomodoroInterval = null;
+        let pomodoroRunning = false;
+
+        let stopwatchSeconds = 0;
+        let stopwatchInterval = null;
+        let stopwatchRunning = false;
+        let laps = [];
+
+        let audioCtx = null;
+        function playAlarmSoundLoop() {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.frequency.setValueAtTime(950, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start(); 
+                osc.stop(audioCtx.currentTime + 0.3);
+            } catch (e) { console.log(e); }
+        }
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            document.getElementById('taskDate').valueAsDate = new Date();
+            updateNetworkStatus();
+
+            if (window.cargarDeNubeFirebase) {
+                const cloudData = await window.cargarDeNubeFirebase();
+                if (cloudData) {
+                    tasks = cloudData.tasks || [];
+                    scheduleItems = cloudData.scheduleItems || [];
+                    evidences = cloudData.evidences || [];
+                    userExp = cloudData.userExp || 0;
+                    userStreak = cloudData.userStreak || 0;
+                    senzuBeans = cloudData.senzuBeans || 0;
+                    dailyExpLog = cloudData.dailyExpLog || {};
+                    journalLogs = cloudData.journalLogs || {};
+                    completedDays = cloudData.completedDays || [];
+                    unlockedBadges = cloudData.unlockedBadges || [];
+                    selectedTitle = cloudData.selectedTitle || "Guerrero en Pruebas";
+                    isLightMode = cloudData.isLightMode || false;
+                    waterGlasses = cloudData.waterGlasses || [false, false, false, false];
+                    todayExpenses = cloudData.todayExpenses || [];
+                    countdownTarget = cloudData.countdownTarget || null;
+                    countdownTitleText = cloudData.countdownTitleText || "";
+                    skinProtocol = cloudData.skinProtocol || { soap: false, patches: false };
+                    sleepLog = cloudData.sleepLog || { hours: 0, rating: "", advice: "" };
+                    if (countdownTarget) startCountdownTimer();
+                } else {
+                    cargarLocalStorage();
+                }
+            } else {
+                cargarLocalStorage();
+            }
+
+            limpiarHorariosDuplicados();
+
+            const todayStr = new Date().toLocaleDateString();
+            if (journalLogs[todayStr]) {
+                document.getElementById('journalInput').value = journalLogs[todayStr];
+            }
+
+            document.getElementById('protocolSoap').checked = skinProtocol.soap;
+            document.getElementById('protocolPatches').checked = skinProtocol.patches;
+
+            updateTimelineVisual();
+            applyTheme();
+            renderThirtyDaysGrid();
+            renderWaterGlasses();
+            renderExpenses();
+            renderSleepEvaluation();
+            initChart();
+            renderUI();
+        });
+
+        function limpiarHorariosDuplicados() {
+            scheduleItems = scheduleItems.filter(s => s.activity && !s.activity.includes("Materia Importada PDF") && !s.time.includes("12a.m"));
+            const uniqueMap = new Map();
+            scheduleItems.forEach(item => {
+                const key = `${item.day}-${item.time}-${item.activity.trim().toUpperCase()}`;
+                if (!uniqueMap.has(key)) {
+                    uniqueMap.set(key, item);
+                }
+            });
+            scheduleItems = Array.from(uniqueMap.values());
+            localStorage.setItem('saiyan_schedule', JSON.stringify(scheduleItems));
+        }
+
+        function cargarLocalStorage() {
+            tasks = JSON.parse(localStorage.getItem('saiyan_tasks')) || [];
+            scheduleItems = JSON.parse(localStorage.getItem('saiyan_schedule')) || [];
+            evidences = JSON.parse(localStorage.getItem('saiyan_evidences')) || [];
+            userExp = parseInt(localStorage.getItem('saiyan_exp')) || 0;
+            userStreak = parseInt(localStorage.getItem('saiyan_streak')) || 0;
+            senzuBeans = parseInt(localStorage.getItem('saiyan_senzu')) || 0;
+            dailyExpLog = JSON.parse(localStorage.getItem('saiyan_daily_log')) || {};
+            journalLogs = JSON.parse(localStorage.getItem('saiyan_journals')) || {};
+            completedDays = JSON.parse(localStorage.getItem('saiyan_thirty_days')) || [];
+            unlockedBadges = JSON.parse(localStorage.getItem('saiyan_unlocked_badges')) || [];
+            selectedTitle = localStorage.getItem('saiyan_selected_title') || "Guerrero en Pruebas";
+            isLightMode = JSON.parse(localStorage.getItem('saiyan_lightmode')) || false;
+            waterGlasses = JSON.parse(localStorage.getItem('saiyan_water')) || [false, false, false, false];
+            todayExpenses = JSON.parse(localStorage.getItem('saiyan_expenses')) || [];
+            countdownTarget = localStorage.getItem('saiyan_cdt_target') || null;
+            countdownTitleText = localStorage.getItem('saiyan_cdt_title') || "";
+            skinProtocol = JSON.parse(localStorage.getItem('saiyan_skin')) || { soap: false, patches: false };
+            sleepLog = JSON.parse(localStorage.getItem('saiyan_sleep')) || { hours: 0, rating: "", advice: "" };
+            if (countdownTarget) startCountdownTimer();
+        }
+
+        function toggleWaterGlass(index) {
+            waterGlasses[index] = !waterGlasses[index];
+            if (waterGlasses.every(v => v)) {
+                userExp += 20;
+                playAlarmSoundLoop();
+                showToast("💧 ¡Meta de hidratación cumplida! +20 EXP.");
+            }
+            saveAndRender();
+            renderWaterGlasses();
+        }
+
+        function renderWaterGlasses() {
+            waterGlasses.forEach((filled, idx) => {
+                const btn = document.getElementById(`waterGlass${idx+1}`);
+                if (filled) {
+                    btn.className = "w-10 h-12 rounded-xl border border-cyan-500 bg-cyan-500/20 flex flex-col items-center justify-center text-cyan-400 transition shadow-md shadow-cyan-500/20";
+                } else {
+                    btn.className = "w-10 h-12 rounded-xl border border-slate-700 bg-slate-900 flex flex-col items-center justify-center text-slate-500 transition";
+                }
+            });
+        }
+
+        function handleAddExpense(e) {
+            e.preventDefault();
+            const name = document.getElementById('expenseName').value.trim();
+            const amount = parseFloat(document.getElementById('expenseAmount').value);
+            if (!name || isNaN(amount)) return;
+
+            todayExpenses.push({ name, amount });
+            document.getElementById('expenseName').value = '';
+            document.getElementById('expenseAmount').value = '';
+            saveAndRender();
+            renderExpenses();
+            showToast("💸 Gasto registrado con éxito.");
+        }
+
+        function renderExpenses() {
+            let total = todayExpenses.reduce((acc, item) => acc + item.amount, 0);
+            document.getElementById('totalExpenseAmount').innerText = `$${total.toFixed(2)}`;
+            const listContainer = document.getElementById('expenseListContainer');
+            if (todayExpenses.length === 0) {
+                listContainer.innerHTML = `<span class="text-slate-500 italic">No hay gastos hoy.</span>`;
+            } else {
+                listContainer.innerHTML = todayExpenses.map((item, idx) => `
+                    <div class="flex justify-between items-center bg-slate-900 px-2 py-1 rounded-lg border border-slate-700">
+                        <span>${item.name}: <strong class="text-emerald-400">$${item.amount.toFixed(2)}</strong></span>
+                        <button onclick="deleteExpenseItem(${idx})" class="text-red-400 hover:text-red-300 text-[10px]"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function deleteExpenseItem(idx) {
+            todayExpenses.splice(idx, 1);
+            saveAndRender();
+            renderExpenses();
+            showToast("🗑️ Gasto eliminado.");
+        }
+
+        function handleAddSchedule(e) {
+            e.preventDefault();
+            const day = document.getElementById('schDay').value;
+            const timeStart = document.getElementById('schTimeStart').value;
+            const timeEnd = document.getElementById('schTimeEnd').value;
+            const activity = document.getElementById('schActivity').value.trim();
+
+            if (!timeStart || !timeEnd) {
+                showToast("⚠️ Selecciona la hora de inicio y fin.", "error");
+                return;
+            }
+
+            const timeSlotFormatted = `${timeStart} - ${timeEnd}`;
+
+            const exists = scheduleItems.some(s => s.day === day && s.time === timeSlotFormatted && s.activity.toLowerCase() === activity.toLowerCase());
+            if (!exists) {
+                scheduleItems.push({ id: Date.now().toString(), day, time: timeSlotFormatted, activity });
+                saveAndRender();
+                document.getElementById('scheduleForm').reset();
+                showToast("📅 Bloque añadido a la matriz.");
+            } else {
+                showToast("⚠️ Esta materia ya está registrada en este horario.", "error");
+            }
+        }
+
+        function deleteSchedule(id) {
+            scheduleItems = scheduleItems.filter(s => s.id !== id);
+            saveAndRender();
+            showToast("🗑️ Bloque eliminado de la matriz.");
+        }
+
+        function clearScheduleMatrix() {
+            if (confirm("¿Vaciar toda la matriz de horario?")) {
+                scheduleItems = [];
+                localStorage.removeItem('saiyan_schedule');
+                saveAndRender();
+                showToast("🗑️ Matriz de horario vaciada.");
+            }
+        }
+
+        function buySenzuBean() {
+            if (userExp >= 150) {
+                userExp -= 150;
+                senzuBeans += 1;
+                playAlarmSoundLoop();
+                saveAndRender();
+                showToast("💊 ¡Has comprado una Semilla del Ermitaño (Senzu)!");
+            } else {
+                showToast("⚠️ No tienes suficiente EXP (Costo: 150 EXP).", "error");
+            }
+        }
+
+        function useSenzuBean() {
+            if (senzuBeans > 0) {
+                senzuBeans -= 1;
+                userStreak += 1;
+                playAlarmSoundLoop();
+                saveAndRender();
+                showToast("⚡ ¡Senzu Bean consumido! Tu racha de disciplina ha sido revitalizada.");
+            } else {
+                showToast("⚠️ No tienes Semillas del Ermitaño en tu inventario.", "error");
+            }
+        }
+
+        function requestNotificationPermission() {
+            if (!("Notification" in window)) {
+                showToast("Este navegador no soporta notificaciones.", "error");
+                return;
+            }
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                    showToast("🔔 ¡Sistema de alarmas activado!");
+                    new Notification("Supreme Saiyan", { body: "Las alarmas te avisarán en pantalla completa." });
+                } else {
+                    showToast("⚠️ Permiso denegado.", "error");
+                }
+            });
+        }
+
+        function showSystemNotification(taskTitle) {
+            if (Notification.permission === "granted") {
+                new Notification("🚨 ¡ALARMA DE DISCIPLINA!", {
+                    body: `¡Es hora de cumplir: "${taskTitle}"!`,
+                    icon: "https://cdn-icons-png.flaticon.com/512/3176/3176366.png",
+                    requireInteraction: true
+                });
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            let bgColors = type === 'success' ? 'bg-slate-800 border-orange-500 text-orange-400' : 'bg-slate-800 border-red-500 text-red-400';
+            let icon = type === 'success' ? 'fa-circle-check text-orange-400' : 'fa-triangle-exclamation text-red-400';
+
+            toast.className = `pointer-events-auto flex items-center space-x-3 px-4 py-3 rounded-xl border shadow-2xl ${bgColors} transform translate-y-2 opacity-0 transition-all duration-300`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-lg"></i><span class="text-xs font-bold text-slate-200">${message}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function toggleTheme() {
+            isLightMode = !isLightMode;
+            localStorage.setItem('saiyan_lightmode', isLightMode);
+            applyTheme();
+            saveAndRender();
+        }
+
+        function applyTheme() {
+            const body = document.getElementById('appBody');
+            const header = document.getElementById('appHeader');
+            const quotePanel = document.getElementById('quotePanel');
+            const stagePanel = document.getElementById('stagePanel');
+            const formPanel = document.getElementById('formPanel');
+            const pomodoroPanel = document.getElementById('pomodoroPanel');
+            const tasksPanel = document.getElementById('tasksPanel');
+            const journalPanel = document.getElementById('journalPanel');
+            const badgesPanel = document.getElementById('badgesPanel');
+            const chartPanel = document.getElementById('chartPanel');
+            const galleryPanel = document.getElementById('galleryPanel');
+            const themeLabel = document.getElementById('themeLabel');
+
+            const panels = [header, quotePanel, stagePanel, formPanel, pomodoroPanel, tasksPanel, journalPanel, badgesPanel, chartPanel, galleryPanel, document.querySelector('footer')];
+
+            if (isLightMode) {
+                body.className = "bg-slate-100 text-slate-900 min-h-screen font-sans antialiased flex flex-col justify-between transition-colors duration-300 relative";
+                panels.forEach(p => {
+                    if(p) p.className = p.className.replace(/bg-slate-800/g, 'bg-white').replace(/border-slate-700/g, 'border-slate-300').replace(/text-slate-100/g, 'text-slate-800').replace(/text-slate-200/g, 'text-slate-800');
+                });
+                themeLabel.innerText = "Modo Capsule Corp";
+            } else {
+                body.className = "bg-slate-900 text-slate-100 min-h-screen font-sans antialiased flex flex-col justify-between transition-colors duration-300 relative";
+                panels.forEach(p => {
+                    if(p) p.className = p.className.replace(/bg-white/g, 'bg-slate-800').replace(/border-slate-300/g, 'border-slate-700').replace(/text-slate-800/g, 'text-slate-100');
+                });
+                themeLabel.innerText = "Modo Saiyajin";
+            }
+        }
+
+        function testAlarmSound() {
+            playAlarmSoundLoop();
+            showToast("🔊 Timbre de alarma probado.");
+            showSystemNotification("Prueba de Alarma del Sistema");
+        }
+
+        function markTodayInThirtyDays() {
+            const todayDayNumber = new Date().getDate();
+            const mappedDay = ((todayDayNumber - 1) % 30) + 1;
+            if (!completedDays.includes(mappedDay)) {
+                completedDays.push(mappedDay);
+                renderThirtyDaysGrid();
+            }
+        }
+
+        function renderThirtyDaysGrid() {
+            const grid = document.getElementById('thirtyDaysGrid');
+            grid.innerHTML = '';
+            for (let i = 1; i <= 30; i++) {
+                const isCompleted = completedDays.includes(i);
+                const dayBox = document.createElement('div');
+                dayBox.className = `h-8 rounded-lg flex items-center justify-center text-[10px] font-bold border transition ${isCompleted ? 'bg-orange-500 border-orange-400 text-slate-950 shadow-md shadow-orange-500/30' : 'bg-slate-900 border-slate-700 text-slate-500'}`;
+                dayBox.innerText = `D${i}`;
+                grid.appendChild(dayBox);
+            }
+        }
+
+        setInterval(() => {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('clockDisplay').innerText = `${hours}:${minutes}:${seconds}`;
+
+            document.getElementById('alarmClockBig').innerText = `${hours}:${minutes}`;
+            const options = { day: 'numeric', month: 'short', weekday: 'long' };
+            document.getElementById('alarmDateBig').innerText = now.toLocaleDateString('es-ES', options) + ' a.m.';
+
+            const currentHM = `${hours}:${minutes}`;
+            tasks.forEach(task => {
+                if (!task.completed && task.time === currentHM && !task.alarmTriggeredToday) {
+                    task.alarmTriggeredToday = true;
+                    triggerPhoneAlarm(task);
+                }
+            });
+        }, 1000);
+
+        function triggerPhoneAlarm(task) {
+            activeTaskIdForEvidence = task.id;
+            document.getElementById('alarmTaskName').innerText = task.title;
+            document.getElementById('alarmModal').classList.remove('hidden');
+            
+            playAlarmSoundLoop();
+            alarmRingingInterval = setInterval(() => {
+                playAlarmSoundLoop();
+            }, 1000);
+
+            showSystemNotification(task.title);
+        }
+
+        function stopAlarmSound() {
+            if (alarmRingingInterval) {
+                clearInterval(alarmRingingInterval);
+                alarmRingingInterval = null;
+            }
+        }
+
+        function openEvidenceModalFromAlarm() {
+            stopAlarmSound();
+            document.getElementById('alarmModal').classList.add('hidden');
+            document.getElementById('evidenceModal').classList.remove('hidden');
+        }
+
+        function penalizeTask() {
+            stopAlarmSound();
+            document.getElementById('alarmModal').classList.add('hidden');
+            userExp = Math.max(0, userExp - 20);
+            saveAndRender();
+            showToast("⚠️ Alarma pospuesta. Penalización: -20 EXP.", "error");
+        }
+
+        function closeEvidenceModal() {
+            document.getElementById('evidenceModal').classList.add('hidden');
+            tempImageBase64 = null;
+            document.getElementById('uploadPlaceholder').classList.remove('hidden');
+            document.getElementById('imagePreviewContainer').classList.add('hidden');
+            document.getElementById('evidenceFile').value = '';
+        }
+
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    tempImageBase64 = e.target.result;
+                    document.getElementById('imagePreview').src = tempImageBase64;
+                    document.getElementById('uploadPlaceholder').classList.add('hidden');
+                    document.getElementById('imagePreviewContainer').classList.remove('hidden');
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function handleAddTask(e) {
+            e.preventDefault();
+            const title = document.getElementById('taskTitle').value;
+            const categoryKey = document.getElementById('taskCategory').value;
+            const date = document.getElementById('taskDate').value;
+            const time = document.getElementById('taskTime').value;
+            const notes = document.getElementById('taskNotes').value;
+
+            const categoryInfo = categoryExpMap[categoryKey];
+
+            tasks.push({
+                id: Date.now().toString(),
+                title,
+                category: categoryInfo.name,
+                icon: categoryInfo.icon,
+                exp: categoryInfo.exp,
+                date,
+                time,
+                notes,
+                completed: false,
+                alarmTriggeredToday: false
+            });
+
+            tasks.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+
+            saveAndRender();
+            document.getElementById('taskForm').reset();
+            document.getElementById('taskDate').valueAsDate = new Date();
+            showToast("✨ Alarma y misión programadas en la Agenda.");
+        }
+
+        function openEvidenceModalDirect(taskId) {
+            activeTaskIdForEvidence = taskId;
+            document.getElementById('evidenceModal').classList.remove('hidden');
+        }
+
+        function submitEvidence() {
+            if (!tempImageBase64) {
+                showToast("⚠️ Sube una foto de evidencia obligatoria.", "error");
+                return;
+            }
+
+            const taskIndex = tasks.findIndex(t => t.id === activeTaskIdForEvidence);
+            if (taskIndex !== -1) {
+                const task = tasks[taskIndex];
+                let multiplier = 1.0 + (userStreak * 0.1);
+                let finalExp = Math.round(task.exp * multiplier);
+
+                userExp += finalExp;
+                userStreak += 1;
+                playAlarmSoundLoop();
+
+                const todayKey = new Date().toLocaleDateString();
+                dailyExpLog[todayKey] = (dailyExpLog[todayKey] || 0) + finalExp;
+
+                markTodayInThirtyDays();
+
+                evidences.unshift({
+                    id: Date.now().toString(),
+                    title: task.title,
+                    image: tempImageBase64,
+                    date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                    exp: finalExp
+                });
+
+                tasks.splice(taskIndex, 1);
+            }
+
+            saveAndRender();
+            closeEvidenceModal();
+            showToast("🔥 ¡Victoria registrada! EXP sumada.");
+        }
+
+        function saveJournal() {
+            const text = document.getElementById('journalInput').value;
+            const todayKey = new Date().toLocaleDateString();
+            journalLogs[todayKey] = text;
+            saveAndRender();
+            showToast("📖 Reflexión guardada en tu Diario.");
+        }
+
+        function openJournalHistory() {
+            const container = document.getElementById('journalHistoryList');
+            const dates = Object.keys(journalLogs).sort().reverse();
+
+            if (dates.length === 0) {
+                container.innerHTML = `<p class="text-center text-slate-500 text-xs py-8">Aún no hay reflexiones guardadas.</p>`;
+            } else {
+                container.innerHTML = dates.map(date => `
+                    <div class="bg-slate-900 border border-slate-700 p-3.5 rounded-xl space-y-1">
+                        <span class="text-orange-400 font-bold text-xs"><i class="fa-regular fa-calendar"></i> ${date}</span>
+                        <p class="text-slate-200 text-xs whitespace-pre-line">${journalLogs[date]}</p>
+                    </div>
+                `).join('');
+            }
+            document.getElementById('journalHistoryModal').classList.remove('hidden');
+        }
+
+        function closeJournalHistory() {
+            document.getElementById('journalHistoryModal').classList.add('hidden');
+        }
+
+        function changeUserTitle() {
+            selectedTitle = document.getElementById('userTitleSelect').value;
+            saveAndRender();
+            showToast(`🎖️ Título actualizado: ${selectedTitle}`);
+        }
+
+        function clearAllTasks() {
+            if (confirm("¿Eliminar todas las alarmas y misiones?")) {
+                tasks = [];
+                saveAndRender();
+                showToast("🗑️ Agenda limpiada.");
+            }
+        }
+
+        function startPomodoro() {
+            if (pomodoroRunning) return;
+            pomodoroRunning = true;
+            pomodoroInterval = setInterval(() => {
+                if (pomodoroTime > 0) {
+                    pomodoroTime--;
+                    let mins = Math.floor(pomodoroTime / 60);
+                    let secs = pomodoroTime % 60;
+                    document.getElementById('pomodoroTimer').innerText = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+                } else {
+                    clearInterval(pomodoroInterval);
+                    pomodoroRunning = false;
+                    pomodoroTime = 25 * 60;
+                    userExp += 30;
+                    playAlarmSoundLoop();
+                    const todayKey = new Date().toLocaleDateString();
+                    dailyExpLog[todayKey] = (dailyExpLog[todayKey] || 0) + 30;
+                    markTodayInThirtyDays();
+                    saveAndRender();
+                    showToast("🚀 ¡Gravedad 100x completada! +30 EXP.");
+                }
+            }, 1000);
+        }
+
+        function resetPomodoro() {
+            clearInterval(pomodoroInterval);
+            pomodoroRunning = false;
+            pomodoroTime = 25 * 60;
+            document.getElementById('pomodoroTimer').innerText = "25:00";
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('progressChart').getContext('2d');
+            const labels = Object.keys(dailyExpLog).slice(-7);
+            const dataValues = labels.map(date => dailyExpLog[date]);
+
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels.length ? labels : ['Hoy'],
+                    datasets: [{
+                        label: 'EXP Ganada',
+                        data: dataValues.length ? dataValues : [0],
+                        backgroundColor: 'rgba(249, 115, 22, 0.7)',
+                        borderColor: 'rgb(249, 115, 22)',
+                        borderWidth: 2,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(100, 100, 100, 0.1)' } },
+                        x: { grid: { display: false } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function updateChart() {
+            if (myChart) {
+                const labels = Object.keys(dailyExpLog).slice(-7);
+                const dataValues = labels.map(date => dailyExpLog[date]);
+                myChart.data.labels = labels.length ? labels : ['Hoy'];
+                myChart.data.datasets[0].data = dataValues.length ? dataValues : [0];
+                myChart.update();
+            }
+        }
+
+        function checkBadges() {
+            const badgesDef = [
+                { id: "alba", name: "Guerrero del Alba", desc: "100 EXP", condition: userExp >= 100, icon: "fa-sun" },
+                { id: "guardian", name: "Guardián", desc: "3 fotos", condition: evidences.length >= 3, icon: "fa-camera-retro" },
+                { id: "despierto", name: "Saiyajin Despierto", desc: "500 EXP", condition: userExp >= 500, icon: "fa-fire" },
+                { id: "invencible", name: "Invencible", desc: "Racha 5", condition: userStreak >= 5, icon: "fa-shield-heart" }
+            ];
+
+            badgesDef.forEach(b => {
+                if (b.condition && !unlockedBadges.includes(b.id)) {
+                    unlockedBadges.push(b.id);
+                    userExp += 500;
+                    playAlarmSoundLoop();
+                    showToast(`🏆 ¡Medalla desbloqueada: ${b.name}! (+500 EXP)`);
+                }
+            });
+        }
+
+        async function saveAndRender() {
+            checkBadges();
+            
+            skinProtocol.soap = document.getElementById('protocolSoap').checked;
+            skinProtocol.patches = document.getElementById('protocolPatches').checked;
+
+            const stateData = {
+                tasks, scheduleItems, evidences, userExp, userStreak, senzuBeans, dailyExpLog, journalLogs, completedDays, unlockedBadges, selectedTitle, isLightMode, waterGlasses, todayExpenses, countdownTarget, countdownTitleText, skinProtocol, sleepLog
+            };
+
+            localStorage.setItem('saiyan_tasks', JSON.stringify(tasks));
+            localStorage.setItem('saiyan_schedule', JSON.stringify(scheduleItems));
+            localStorage.setItem('saiyan_evidences', JSON.stringify(evidences));
+            localStorage.setItem('saiyan_exp', userExp);
+            localStorage.setItem('saiyan_streak', userStreak);
+            localStorage.setItem('saiyan_senzu', senzuBeans);
+            localStorage.setItem('saiyan_daily_log', JSON.stringify(dailyExpLog));
+            localStorage.setItem('saiyan_journals', JSON.stringify(journalLogs));
+            localStorage.setItem('saiyan_thirty_days', JSON.stringify(completedDays));
+            localStorage.setItem('saiyan_unlocked_badges', JSON.stringify(unlockedBadges));
+            localStorage.setItem('saiyan_selected_title', selectedTitle);
+            localStorage.setItem('saiyan_water', JSON.stringify(waterGlasses));
+            localStorage.setItem('saiyan_expenses', JSON.stringify(todayExpenses));
+            localStorage.setItem('saiyan_skin', JSON.stringify(skinProtocol));
+            localStorage.setItem('saiyan_sleep', JSON.stringify(sleepLog));
+            if (countdownTarget) {
+                localStorage.setItem('saiyan_cdt_target', countdownTarget);
+                localStorage.setItem('saiyan_cdt_title', countdownTitleText);
+            }
+
+            if (window.guardarEnNubeFirebase) {
+                await window.guardarEnNubeFirebase(stateData);
+            }
+
+            renderUI();
+            updateChart();
+        }
+
+        function renderUI() {
+            document.getElementById('userExp').innerText = userExp;
+            document.getElementById('streakDisplay').innerText = `Racha: ${userStreak} días`;
+            document.getElementById('senzuDisplay').innerText = `Senzu: ${senzuBeans}`;
+            document.getElementById('senzuInventoryCount').innerText = `${senzuBeans} unidades`;
+
+            document.getElementById('statTotalCompleted').innerText = evidences.length;
+            let bestExpVal = Object.values(dailyExpLog).length ? Math.max(...Object.values(dailyExpLog)) : 0;
+            document.getElementById('statBestExp').innerText = bestExpVal;
+            document.getElementById('statTotalPhotos').innerText = evidences.length;
+
+            let currentStage = dragonStages[0];
+            let nextStage = dragonStages[1] || dragonStages[dragonStages.length - 1];
+
+            for (let i = 0; i < dragonStages.length; i++) {
+                if (userExp >= dragonStages[i].minExp) {
+                    currentStage = dragonStages[i];
+                    nextStage = dragonStages[i+1] || currentStage;
+                }
+            }
+
+            document.getElementById('currentStageTitle').innerText = currentStage.name;
+            document.getElementById('currentStageDesc').innerText = currentStage.desc;
+            document.getElementById('progressTextMin').innerText = currentStage.name;
+
+            // Actualizar Frase Dinámica y Tema según el Rango Actual
+            document.getElementById('quoteText').innerText = `"${currentStage.quote}"`;
+            document.getElementById('quoteAuthor').innerText = `— ${currentStage.author}`;
+            document.getElementById('quotePanel').className = `bg-gradient-to-r ${currentStage.themeColor} border border-orange-500/30 rounded-2xl p-4 shadow-lg flex items-center justify-between transition-colors duration-300`;
+
+            let unlockedTitles = ["Guerrero en Pruebas"];
+            if (userExp >= 100) unlockedTitles.push("Rompedor de Límites");
+            if (userExp >= 500) unlockedTitles.push("El Inmortal");
+            if (userExp >= 1500) unlockedTitles.push("Guerrero Legendario");
+
+            const titleSelect = document.getElementById('userTitleSelect');
+            titleSelect.innerHTML = unlockedTitles.map(t => `<option value="${t}" ${selectedTitle === t ? 'selected' : ''}>Título: ${t}</option>`).join('');
+
+            let progressPercent = 100;
+            if (currentStage !== nextStage) {
+                let range = nextStage.minExp - currentStage.minExp;
+                let currentInLevel = userExp - currentStage.minExp;
+                progressPercent = Math.min(100, Math.max(0, (currentInLevel / range) * 100));
+                document.getElementById('progressTextNext').innerText = `Siguiente: ${nextStage.name} (${nextStage.minExp} EXP)`;
+            } else {
+                document.getElementById('progressTextNext').innerText = `¡Nivel Máximo!`;
+            }
+
+            document.getElementById('expProgressBar').style.width = `${progressPercent}%`;
+
+            const badges = [
+                { name: "Guerrero del Alba", desc: "100 EXP", unlocked: userExp >= 100, icon: "fa-sun" },
+                { name: "Guardián", desc: "3 fotos", unlocked: evidences.length >= 3, icon: "fa-camera-retro" },
+                { name: "Saiyajin Despierto", desc: "500 EXP", unlocked: userExp >= 500, icon: "fa-fire" },
+                { name: "Invencible", desc: "Racha 5", unlocked: userStreak >= 5, icon: "fa-shield-heart" }
+            ];
+
+            document.getElementById('badgesContainer').innerHTML = badges.map(b => `
+                <div class="bg-slate-900/40 border ${b.unlocked ? 'border-amber-500 text-amber-400' : 'border-slate-700 text-slate-500'} rounded-xl p-3 text-center space-y-1">
+                    <i class="fa-solid ${b.icon} text-lg"></i>
+                    <h5 class="font-bold text-xs truncate">${b.name}</h5>
+                    <p class="text-[9px] opacity-70">${b.desc}</p>
+                </div>
+            `).join('');
+
+            // RENDERIZADO DE LA MATRIZ DE HORARIO
+            const matrixBody = document.getElementById('scheduleMatrixBody');
+            const daysOfWeek = ["LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES"];
+
+            let uniqueTimes = [...new Set(scheduleItems.map(s => s.time))].sort();
+            if (uniqueTimes.length === 0) {
+                uniqueTimes = ["07:00 - 09:00", "09:00 - 11:00", "11:00 - 13:00", "13:00 - 15:00", "15:00 - 17:00", "17:00 - 20:00"];
+            }
+
+            matrixBody.innerHTML = uniqueTimes.map(slot => `
+                <tr class="text-center border-b border-slate-800 hover:bg-slate-800/40 transition">
+                    <td class="p-3 font-mono font-bold text-orange-400 bg-slate-800/50 border-r border-slate-700 text-[11px]">${slot}</td>
+                    ${daysOfWeek.map(day => {
+                        const matched = scheduleItems.filter(s => s.day === day && s.time === slot);
+                        return `
+                            <td class="p-2 border-r border-slate-800 relative group">
+                                <div class="space-y-1.5">
+                                    ${matched.length ? matched.map(m => `
+                                        <div class="bg-orange-500/10 border border-orange-500/40 rounded-lg p-2 text-left relative group/item shadow-sm">
+                                            <p class="font-bold text-slate-100 text-[11px] leading-tight">${m.activity}</p>
+                                            <button onclick="deleteSchedule('${m.id}')" class="absolute top-1 right-1 opacity-0 group-hover/item:opacity-100 text-red-400 hover:text-red-300 transition text-[10px] bg-slate-900 px-1.5 py-0.5 rounded" title="Eliminar bloque">
+                                                <i class="fa-solid fa-xmark"></i>
+                                            </button>
+                                        </div>
+                                    `).join('') : '<span class="text-slate-600 text-[10px]">—</span>'}
+                                </div>
+                            </td>
+                        `;
+                    }).join('')}
+                </tr>
+            `).join('');
+
+            const tasksListContainer = document.getElementById('tasksList');
+            document.getElementById('activeTasksCount').innerText = `${tasks.length} activas`;
+
+            if (tasks.length === 0) {
+                tasksListContainer.innerHTML = `
+                    <div class="text-center py-12 text-slate-500 text-sm">
+                        <i class="fa-solid fa-bell-slash text-3xl mb-2 block opacity-40"></i>
+                        No hay alarmas ni misiones programadas. ¡Añade una con su fecha!
+                    </div>
+                `;
+            } else {
+                tasksListContainer.innerHTML = tasks.map(task => `
+                    <div class="bg-slate-900/60 border border-orange-500/30 rounded-xl p-3.5 flex items-center justify-between shadow-sm">
+                        <div class="flex items-center space-x-3">
+                            <div class="bg-orange-500/20 text-orange-400 p-2.5 rounded-lg border border-orange-500/30 font-mono font-bold text-xs flex flex-col items-center">
+                                <span><i class="fa-solid fa-calendar-days"></i> ${task.date || 'Hoy'}</span>
+                                <span class="text-amber-400"><i class="fa-solid fa-bell"></i> ${task.time}</span>
+                            </div>
+                            <div class="space-y-0.5">
+                                <h4 class="font-bold text-sm flex items-center space-x-2">
+                                    <i class="fa-solid ${task.icon || 'fa-bolt'} text-orange-500 text-xs"></i>
+                                    <span>${task.title}</span> 
+                                </h4>
+                                ${task.notes ? `<p class="text-[11px] text-slate-400">${task.notes}</p>` : ''}
+                                <div class="flex items-center space-x-3 text-xs opacity-75">
+                                    <span class="text-amber-400 font-medium">+${task.exp} EXP (${task.category})</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="openEvidenceModalDirect('${task.id}')" class="bg-orange-500/20 hover:bg-orange-500 text-orange-400 hover:text-slate-950 font-bold px-3.5 py-2 rounded-lg text-xs transition flex items-center space-x-1.5 border border-orange-500/30">
+                            <i class="fa-solid fa-camera"></i>
+                            <span>Evidencia</span>
+                        </button>
+                    </div>
+                `).join('');
+            }
+
+            const galleryContainer = document.getElementById('evidenceGallery');
+            if (evidences.length === 0) {
+                galleryContainer.innerHTML = `
+                    <div class="col-span-full text-center py-8 text-slate-500 text-sm">
+                        Aún no hay evidencias registradas.
+                    </div>
+                `;
+            } else {
+                galleryContainer.innerHTML = evidences.map(item => `
+                    <div class="bg-slate-900/40 border border-slate-700 rounded-xl overflow-hidden shadow-md group">
+                        <div class="h-32 overflow-hidden relative">
+                            <img src="${item.image}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                            <span class="absolute top-2 right-2 bg-slate-900/80 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded border border-slate-700">+${item.exp} EXP</span>
+                        </div>
+                        <div class="p-2.5 space-y-1">
+                            <h5 class="font-bold text-xs truncate">${item.title}</h5>
+                            <p class="text-[10px] opacity-60">${item.date}</p>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+    </script>
+</body>
+</html>
